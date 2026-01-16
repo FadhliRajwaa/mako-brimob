@@ -98,21 +98,43 @@
                             <!-- Date Filter -->
                             <flux:field>
                                 <flux:label class="text-xs font-bold uppercase text-slate-500 mb-2">Tanggal Pemeriksaan</flux:label>
-                                <div class="relative group">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <flux:icon name="calendar" class="h-4 w-4 text-slate-400" />
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="relative group">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <flux:icon name="calendar" class="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <input 
+                                            type="date" 
+                                            wire:model.live="filters.tanggal_mulai" 
+                                            class="pl-9 block w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-brand-500 focus:ring-brand-500 dark:text-white shadow-sm transition-all"
+                                            placeholder="Dari"
+                                            title="Tanggal mulai (atau tanggal spesifik jika tanggal akhir kosong)"
+                                        >
+                                        @if($filters['tanggal_mulai'])
+                                            <button wire:click="$set('filters.tanggal_mulai', null)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-red-500">
+                                                <flux:icon name="x-mark" class="h-4 w-4" />
+                                            </button>
+                                        @endif
                                     </div>
-                                    <input 
-                                        type="date" 
-                                        wire:model.live="filters.tanggal_mulai" 
-                                        class="pl-9 block w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-brand-500 focus:ring-brand-500 dark:text-white shadow-sm transition-all"
-                                    >
-                                    @if($filters['tanggal_mulai'])
-                                        <button wire:click="$set('filters.tanggal_mulai', null)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-red-500">
-                                            <flux:icon name="x-mark" class="h-4 w-4" />
-                                        </button>
-                                    @endif
+                                    <div class="relative group">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <flux:icon name="calendar" class="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <input 
+                                            type="date" 
+                                            wire:model.live="filters.tanggal_akhir" 
+                                            class="pl-9 block w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:border-brand-500 focus:ring-brand-500 dark:text-white shadow-sm transition-all"
+                                            placeholder="Sampai"
+                                            title="Tanggal akhir (kosongkan untuk filter tanggal spesifik)"
+                                        >
+                                        @if($filters['tanggal_akhir'])
+                                            <button wire:click="$set('filters.tanggal_akhir', null)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-red-500">
+                                                <flux:icon name="x-mark" class="h-4 w-4" />
+                                            </button>
+                                        @endif
+                                    </div>
                                 </div>
+                                <p class="text-xs text-slate-400 mt-1">Isi satu tanggal untuk filter spesifik, atau dua untuk range</p>
                             </flux:field>
 
                             <!-- Satuan Kerja Filter -->

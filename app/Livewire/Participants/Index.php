@@ -55,8 +55,19 @@ class Index extends Component
             ->with(['paket', 'instansi', 'uploader'])
             // Role-based filtering: User only sees their own data
             ->when(!$user->isAdmin(), fn ($query) => $query->where('diupload_oleh', $user->id))
-            ->when($this->filters['tanggal_mulai'], fn ($query) => $query->whereDate('tanggal_periksa', '>=', $this->filters['tanggal_mulai']))
-            ->when($this->filters['tanggal_akhir'], fn ($query) => $query->whereDate('tanggal_periksa', '<=', $this->filters['tanggal_akhir']))
+            ->when($this->filters['tanggal_mulai'] && $this->filters['tanggal_akhir'], function ($query) {
+                // Date range filter
+                $query->whereDate('tanggal_periksa', '>=', $this->filters['tanggal_mulai'])
+                      ->whereDate('tanggal_periksa', '<=', $this->filters['tanggal_akhir']);
+            })
+            ->when($this->filters['tanggal_mulai'] && !$this->filters['tanggal_akhir'], function ($query) {
+                // Single date - exact match
+                $query->whereDate('tanggal_periksa', '=', $this->filters['tanggal_mulai']);
+            })
+            ->when(!$this->filters['tanggal_mulai'] && $this->filters['tanggal_akhir'], function ($query) {
+                // Only end date - filter up to that date
+                $query->whereDate('tanggal_periksa', '<=', $this->filters['tanggal_akhir']);
+            })
             ->when($this->filters['kode_paket'], fn ($query) => $query->where('kode_paket', $this->filters['kode_paket']))
             ->when($this->filters['satuan_kerja'], fn ($query) => $query->where('satuan_kerja', $this->filters['satuan_kerja']))
             ->when($this->filters['status_wa'], fn ($query) => $query->where('status_wa', $this->filters['status_wa']))
