@@ -414,10 +414,10 @@ class Index extends Component
     }
 
     /**
-     * Mark WA as sent when user clicks wa.me link (manual sending)
-     * This updates status without actually sending via API
+     * Open wa.me link and mark status as 'queued' (pending confirmation)
+     * User must manually confirm after actually sending the message
      */
-    public function markWaSent(string $nrpNip, string $tanggalPeriksa): void
+    public function openWaLink(string $nrpNip, string $tanggalPeriksa): void
     {
         /** @var User $user */
         $user = Auth::user();
@@ -431,15 +431,15 @@ class Index extends Component
             return; // Silently fail - link already opened
         }
 
-        // Update peserta status
+        // Update peserta status to 'queued' (pending confirmation)
+        // NOT 'sent' - user must confirm after actually sending
         $peserta->update([
-            'status_wa' => 'sent',
-            'waktu_kirim_wa' => now(),
+            'status_wa' => 'queued',
             'error_wa' => null
         ]);
 
-        // Create or update pesan_wa record
-        $pesan = PesanWa::updateOrCreate(
+        // Create pesan_wa record with 'belum_kirim' status
+        PesanWa::updateOrCreate(
             [
                 'nrp_nip_peserta' => $peserta->nrp_nip,
                 'tanggal_periksa_peserta' => $peserta->tanggal_periksa,
@@ -448,12 +448,85 @@ class Index extends Component
                 'provider' => 'manual',
                 'no_tujuan' => $peserta->no_hp_wa,
                 'isi_pesan' => $this->generateWaMessage($peserta),
-                'status' => 'success',
-                'waktu_kirim' => now(),
-                'percobaan' => 1,
+                'status' => 'belum_kirim',
+                'percobaan' => 0,
                 'dibuat_oleh' => Auth::id(),
             ]
         );
+    }
+
+    /**
+     * Confirm that WA message was actually sent (manual confirmation)
+     * Called when user clicks confirm button after sending via wa.me
+     */
+    public function confirmWaSent(string $nrpNip, string $tanggalPeriksa): void
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $peserta = Peserta::where('nrp_nip', $nrpNip)
+            ->whereRaw('DATE(tanggal_periksa) = ?', [$tanggalPeriksa])
+            ->when(!$user->isAdmin(), fn ($q) => $q->where('diupload_oleh', $user->id))
+            ->first();
+
+        if (!$peserta) {
+            $this->dispatch('show-toast', type: 'error', message: 'Data peserta tidak ditemukan');
+            return;
+        }
+
+        // Update peserta status to 'sent'
+        $peserta->update([
+            'status_wa' => 'sent',
+            'waktu_kirim_wa' => now(),
+            'error_wa' => null
+        ]);
+
+        // Update pesan_wa record
+        PesanWa::where('nrp_nip_peserta', $peserta->nrp_nip)
+            ->where('tanggal_periksa_peserta', $peserta->tanggal_periksa)
+            ->update([
+                'status' => 'success',
+                'waktu_kirim' => now(),
+                'percobaan' => 1,
+            ]);
+
+        $this->dispatch('show-toast', type: 'success', message: "Konfirmasi: WA ke {$peserta->nama} sudah terkirim");
+    }
+
+    /**
+     * Cancel/reset WA status from 'queued' back to 'not_sent'
+     * Called when user cancels or if number was invalid
+     */
+    public function cancelWaQueued(string $nrpNip, string $tanggalPeriksa): void
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $peserta = Peserta::where('nrp_nip', $nrpNip)
+            ->whereRaw('DATE(tanggal_periksa) = ?', [$tanggalPeriksa])
+            ->when(!$user->isAdmin(), fn ($q) => $q->where('diupload_oleh', $user->id))
+            ->first();
+
+        if (!$peserta) {
+            $this->dispatch('show-toast', type: 'error', message: 'Data peserta tidak ditemukan');
+            return;
+        }
+
+        // Reset peserta status to 'not_sent'
+        $peserta->update([
+            'status_wa' => 'not_sent',
+            'error_wa' => 'Dibatalkan oleh user'
+        ]);
+
+        // Update pesan_wa record
+        PesanWa::where('nrp_nip_peserta', $peserta->nrp_nip)
+            ->where('tanggal_periksa_peserta', $peserta->tanggal_periksa)
+            ->update([
+                'status' => 'gagal',
+                'error_terakhir' => 'Dibatalkan oleh user',
+            ]);
+
+        $this->dispatch('show-toast', type: 'info', message: "Status WA {$peserta->nama} direset");
     }
 
     /**
